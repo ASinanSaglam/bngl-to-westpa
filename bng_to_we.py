@@ -11,7 +11,50 @@ class BNGL_TO_WE:
         # read the options file
         self._parse_args()
         self.opts = self._load_yaml(self.args.opts)
+        self._parse_opts(self.opts)
+
+    def _parse_opts(self, opts_dict):
+        # Set the main directory we are in 
         self.main_dir = os.getcwd()
+        # we need to find WESTPA and BNG
+        path_options = self.opts.get("path_options", None)
+        if path_options is None:
+            sys.exit("Path options are not specified in options file")
+        self.WESTPA_path = path_options.get("WESTPA_path", None)
+        self.bng_path = path_options.get("bng_path", None)
+        self.bngl_file = path_options.get("bngl_file", None)
+        self.fname = path_options.get("sim_name", "WE_BNG_sim")
+        if self.WESTPA_path is None:
+            sys.exit("WESTPA path is not specified in options file")
+        if self.bng_path is None: 
+            sys.exit("bng_path is not specified in the options file")
+        if self.bngl_file is None:
+            sys.exit("bngl_file path is not specified in the options file")
+        # Define where the BNG2.pl script is 
+        self.bngpl = os.path.join(self.bng_path, "BNG2.pl")
+        # Sampling options 
+        sampling_options = self.opts.get("sampling_options", None)
+        if sampling_options is None:
+            sys.exit("Sampling options are not specified in options file")
+        self.tau = sampling_options.get("tau", None)
+        self.max_iter = sampling_options.get("max_iter", 100)
+        self.dims = sampling_options.get("dimensions", None)
+        self.plen= sampling_options.get("pcoord_length", None)
+        if self.tau is None: 
+            sys.exit("tau is not specified in the options file")
+        if self.dims is None:
+            sys.exit("dimensions is not specified in options file")
+        if self.plen is None:
+            sys.exit("pcoord_length is not specified in options file")
+        # binning options
+        binning_options = self.opts.get("binning_options", None)
+        if binning_options is None:
+            sys.exit("Binning options are not specified in options file")
+        # At the moment I'm assuming a safe set of defaults?
+        self.traj_per_bin = binning_options.get("traj_per_bin", 10)
+        self.block_size = binning_options.get("block_size", 10)
+        self.center_freq = binning_options.get("center_freq", 1)
+        self.max_centers = binning_options.get("max_centers", 300)
 
     def _parse_args(self):
         '''
@@ -46,13 +89,12 @@ class BNGL_TO_WE:
         os.chmod("run.sh", 0764)
 
     def _write_envsh(self):
-        WESTPA_path = self.opts.get("WESTPA_path", None)
-        if WESTPA_path is None:
+        if self.WESTPA_path is None:
             sys.exit("WESTPA path is not specified")
 
         lines = [
             '#!/bin/sh\n',
-            'source {}/westpa.sh\n'.format(WESTPA_path),
+            'source {}/westpa.sh\n'.format(self.WESTPA_path),
             'export WEST_SIM_ROOT="$PWD"\n',
             'export RunNet="$WEST_SIM_ROOT/bngl_conf/run_network"\n',
             'export SIM_NAME=$(basename $WEST_SIM_ROOT)\n'
@@ -128,7 +170,6 @@ class BNGL_TO_WE:
         os.chmod("westpa_scripts/post_iter.sh", 0764)
 
     def _write_initsh(self):
-        self.traj_per_bin = self.opts.get("traj_per_bin", 10)
 
         lines = [
             '#!/bin/bash\n',
@@ -146,12 +187,6 @@ class BNGL_TO_WE:
         os.chmod("init.sh", 0764)
 
     def _write_systempy(self):
-        self.dims = self.opts.get("dimensions", None)
-        if self.dims is None:
-            sys.exit("dimensions is not specified in options file")
-        self.plen= self.opts.get("pcoord_length", None)
-        if self.plen is None:
-            sys.exit("pcoord_length is not specified in options file")
 
         lines = [
             'from __future__ import division, print_function; __metaclass__ = type\n',
@@ -188,10 +223,6 @@ class BNGL_TO_WE:
         f.close()
 
     def _write_westcfg(self):
-        self.max_iter = self.opts.get("max_iter", 100)
-        self.block_size = self.opts.get("block_size", 10)
-        self.center_freq = self.opts.get("center_freq", 1)
-        self.max_centers = self.opts.get("max_centers", 300)
 
         # TODO: Expose max wallclock time?
         lines = [
@@ -261,9 +292,6 @@ class BNGL_TO_WE:
         f.close()
 
     def _write_runsegsh(self):
-        self.tau = self.opts.get("tau", None)
-        if self.tau is None: 
-            sys.exit("tau is not specified in the options file")
 
         step_len = self.tau/self.plen
         step_no = self.plen
@@ -297,7 +325,7 @@ class BNGL_TO_WE:
             '    ln -sv $WEST_PARENT_DATA_REF ./parent.net\n',
             '  fi\n',
             '  $RunNet -o ./seg -p ssa -h $WEST_RAND16 --cdat 0 --fdat 0 -e -g ./parent.net ./parent.net {} {}\n'.format(step_len, step_no),
-            '  tail -n -10 seg.gdat > $WEST_PCOORD_RETURN\n',
+            '  tail -n -{} seg.gdat > $WEST_PCOORD_RETURN\n'.format(step_no),
             'fi\n',
             '\n',
             'if [[ -n $SCRATCH ]];then\n',
@@ -329,10 +357,9 @@ class BNGL_TO_WE:
     def make_sim_folders(self):
         '''
         '''
-        fname = self.opts.get("sim_name", "WE_BNG_sim")
-        self.sim_dir = fname
-        os.makedirs(fname)
-        os.chdir(fname)
+        self.sim_dir = self.fname
+        os.makedirs(self.fname)
+        os.chdir(self.fname)
         os.makedirs("bngl_conf")
         os.makedirs("bstates")
         os.makedirs("westpa_scripts")
@@ -340,21 +367,12 @@ class BNGL_TO_WE:
 
     def copy_run_network(self):
         # Assumes path is absolute path and not relative
-        bng_path = self.opts.get("bng_path", None)
-        if bng_path is None: 
-            sys.exit("bng_path is not specified in the options file")
-        shutil.copyfile(os.path.join(bng_path, "bin/run_network"), "bngl_conf/run_network")
+        shutil.copyfile(os.path.join(self.bng_path, "bin/run_network"), "bngl_conf/run_network")
+        os.chmod("bngl_conf/run_network",0764)
 
     def run_BNGL_on_file(self):
-        bng_path = self.opts.get("bng_path", None)
-        if bng_path is None:
-            sys.exit("bng_path is not specified in the options file")
-        bngpl = os.path.join(bng_path, "BNG2.pl")
         # IMPORTANT! 
         # This assumes that the bngl file doesn't have any directives at the end! 
-        bngl_file = self.opts.get("bngl_file", None)
-        if bngl_file is None:
-            sys.exit("bngl_file path is not specified in the options file")
         # we have a bngl file
         os.chdir("bngl_conf")
         # Get into a folder specifically for this purpose
@@ -362,25 +380,25 @@ class BNGL_TO_WE:
         os.chdir("BNGL")
         # Make specific BNGL files for a) generating network and then 
         # b) getting a starting  gdat file
-        shutil.copyfile(bngl_file, "for_network.bngl")
+        shutil.copyfile(self.bngl_file, "for_network.bngl")
         f = open("for_network.bngl", "a")
         # Adding directives to generate the files we want
         f.write('generate_network({overwrite=>1});\n')
         f.close()
-        shutil.copyfile(bngl_file, "for_gdat.bngl")
+        shutil.copyfile(self.bngl_file, "for_gdat.bngl")
         f = open("for_gdat.bngl", "a")
         # Adding directives to generate the files we want
         f.write('generate_network({overwrite=>1});\n')
         f.write('simulate({method=>"ssa",t_end=>2,n_steps=>1});\n')
         f.close()
         # run BNG2.pl on things to get the files we need
-        proc = sbpc.Popen([bngpl, "for_network.bngl"])
+        proc = sbpc.Popen([self.bngpl, "for_network.bngl"])
         proc.wait()
         assert proc.returncode == 0, "call to BNG2.pl failed, make sure it's in your PATH"
         # copy our network back
         shutil.copyfile("for_network.net", "../init.net")
         # run on gdat 
-        proc = sbpc.Popen([bngpl, "for_gdat.bngl"])
+        proc = sbpc.Popen([self.bngpl, "for_gdat.bngl"])
         proc.wait()
         assert proc.returncode == 0, "call to BNG2.pl failed, make sure it's in your PATH"
         # edit the gdat file to get rid of the last line

@@ -1,12 +1,13 @@
 import argparse, yaml, os, shutil, sys
 import subprocess as sbpc
 
-# TODO: Eventually re-write so that we have a single check
-# function to check everything is in place before doing anything
-# and then make the actual folder. For now, let's test
+# TODO: Expose more functionality to the options file
+# especially some of them can be optionally exposed
 class BNGL_TO_WE:
     def __init__(self):
         '''
+        take arguments from the commmand line and then parse the
+        options file given
         '''
         # read the options file
         self._parse_args()
@@ -14,6 +15,10 @@ class BNGL_TO_WE:
         self._parse_opts(self.opts)
 
     def _parse_opts(self, opts_dict):
+        '''
+        Parses the loaded YAML dictionary and updates the 
+        class attributes appropriately
+        '''
         # Set the main directory we are in 
         self.main_dir = os.getcwd()
         # we need to find WESTPA and BNG
@@ -58,6 +63,7 @@ class BNGL_TO_WE:
 
     def _parse_args(self):
         '''
+        parse arguments passed in the command line
         '''
         parser = argparse.ArgumentParser()
 
@@ -71,12 +77,19 @@ class BNGL_TO_WE:
         self.args = parser.parse_args()
 
     def _load_yaml(self, yfile):
+        '''
+        internal function that opens a file and loads it in using 
+        yaml library
+        '''
         f = open(yfile, "r")
         y = yaml.load(f)
         f.close()
         return y
 
     def _write_runsh(self):
+        '''
+        write the run.sh file for WESTPA simulations
+        '''
         lines = [
           '#!/bin/bash\n',
           'source env.sh\n',
@@ -89,6 +102,9 @@ class BNGL_TO_WE:
         os.chmod("run.sh", 0764)
 
     def _write_envsh(self):
+        '''
+        environment script that uses westpa.sh to setup the environment
+        '''
         if self.WESTPA_path is None:
             sys.exit("WESTPA path is not specified")
 
@@ -106,6 +122,10 @@ class BNGL_TO_WE:
         os.chmod("env.sh", 0764)
 
     def _write_auxfuncs(self):
+        '''
+        auxilliary function, by default we want to avoid the first point because that's
+        time in BNG output
+        '''
         lines = [
               '#!/usr/bin/env python\n',
               'import numpy\n',
@@ -122,6 +142,10 @@ class BNGL_TO_WE:
         f.close()
 
     def _write_bstatestxt(self):
+        '''
+        a simple version of the basis states file, 
+        here you can define multiple starting points if you wanted
+        '''
         lines = [
             '0 1 0.net'
           ]
@@ -131,6 +155,9 @@ class BNGL_TO_WE:
         f.close()
 
     def _write_getpcoord(self):
+        '''
+        the pcoord acquiring script for the inital center
+        '''
         lines = [
             '#!/bin/bash\n',
             'if [ -n "$SEG_DEBUG" ] ; then\n',
@@ -150,6 +177,10 @@ class BNGL_TO_WE:
         os.chmod("westpa_scripts/get_pcoord.sh", 0764)
 
     def _write_postiter(self):
+        '''
+        a basic post-iteration script that deletes iterations that are 
+        older than 3 iterations 
+        '''
         lines = [
             '#!/bin/bash\n',
             'if [ -n "$SEG_DEBUG" ] ; then\n',
@@ -170,7 +201,9 @@ class BNGL_TO_WE:
         os.chmod("westpa_scripts/post_iter.sh", 0764)
 
     def _write_initsh(self):
-
+        '''
+        WESTPA initialization script
+        '''
         lines = [
             '#!/bin/bash\n',
             'source env.sh\n',
@@ -187,7 +220,10 @@ class BNGL_TO_WE:
         os.chmod("init.sh", 0764)
 
     def _write_systempy(self):
-
+        '''
+        the system.py where the bin mapper is defined, most binning options 
+        go here
+        '''
         lines = [
             'from __future__ import division, print_function; __metaclass__ = type\n',
             'import numpy as np\n',
@@ -223,7 +259,9 @@ class BNGL_TO_WE:
         f.close()
 
     def _write_westcfg(self):
-
+        '''
+        the WESTPA configuration file, another YAML file
+        '''
         # TODO: Expose max wallclock time?
         lines = [
             '# vi: set filetype=yaml :\n',
@@ -292,6 +330,10 @@ class BNGL_TO_WE:
         f.close()
 
     def _write_runsegsh(self):
+        '''
+        the most important script that extends an individual segment, 
+        this is where tau is defined
+        '''
 
         step_len = self.tau/self.plen
         step_no = self.plen
@@ -340,12 +382,19 @@ class BNGL_TO_WE:
         os.chmod("westpa_scripts/runseg.sh", 0764)
 
     def write_dynamic_files(self):
+        '''
+        these files change depending on the given options, in particular
+        sampling and binning options
+        '''
         self._write_initsh()
         self._write_systempy()
         self._write_westcfg()
         self._write_runsegsh()
 
     def write_static_files(self):
+        '''
+        these files are always (mostly) the same regardless of given options 
+        '''
         # everything here assumes we are in the right folder
         self._write_runsh()
         self._write_envsh()
@@ -356,6 +405,7 @@ class BNGL_TO_WE:
 
     def make_sim_folders(self):
         '''
+        make folders WESTPA needs 
         '''
         self.sim_dir = self.fname
         os.makedirs(self.fname)
@@ -366,11 +416,20 @@ class BNGL_TO_WE:
 
 
     def copy_run_network(self):
+        '''
+        this copies the run_network binary with correct permissions to where 
+        WESTPA will expect to find it.
+        '''
         # Assumes path is absolute path and not relative
         shutil.copyfile(os.path.join(self.bng_path, "bin/run_network"), "bngl_conf/run_network")
         os.chmod("bngl_conf/run_network",0764)
 
     def run_BNGL_on_file(self):
+        '''
+        this function runs the BNG2.pl on the given bngl file
+        to get a) .net file for the starting point and b) .gdat file
+        to get the first voronoi center for the simulation
+        '''
         # IMPORTANT! 
         # This assumes that the bngl file doesn't have any directives at the end! 
         # we have a bngl file
@@ -414,6 +473,8 @@ class BNGL_TO_WE:
 
     def run(self):
         '''
+        runs the class functions in appropriate order to 
+        make the WESTPA simultion folder
         '''
         self.make_sim_folders()
         self.copy_run_network()

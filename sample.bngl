@@ -1,0 +1,312 @@
+# Individual-based model for "A stochastic and dynamical view of pluripotency in mouse embryonic stem cells"
+# Author: Yen Ting Lin, Peter G. Hufton, Esther Lee, Davit Potoyan
+# Simulation in BNGL coded by Yen Ting Lin, T-6 and T-CNLS, Los Alamos National Laboratory
+ 
+begin parameters
+
+	Omega = 10000 # This is the system size \Omega in the manuscript
+	
+	gamma = 1.0 # normalized by the cell cycle
+	
+	LIF = 1.0 # External condition (binary, 1.0 or 0.0)
+	CH = 0.0 # External condition (binary, 1.0 or 0.0)
+	PD = 0.0 # External condition (binary, 1.0 or 0.0)
+	
+	## The "Slow switching" parameters
+	#kon = 3.2 	  	# normalized association rate
+	#koff = 0.2   	# normalized dissociaton rate 
+	#alphamax = 1.0  # normalized ON production rate
+	#alpham = 0.02 	# normalized MIDIUM production rate
+	
+	
+	# The "Intermediate switching" parameters
+	kon = 16.0 	  	# normalized association rate
+	koff = 1.5   	# normalized dissociaton rate 
+	alphamax = 1.0  # normalized ON production rate
+	alpham = 0.01 	# normalized MIDIUM production rate
+	
+	## The "Fast " parameters
+	#kon = 102.0 	  	# normalized association rate
+	#koff = 10.0   	# normalized dissociaton rate 
+	#alphamax = 1.0  # normalized ON production rate
+	#alpham = 0.005 	# normalized MIDIUM production rate
+	
+	# scaling of the model parameter for the individual-based model (Eq.3) 
+	konIB = kon/Omega
+	koffIB = koff
+	alphamIB = alpham*Omega
+	alphamaxIB = alphamax*Omega
+		
+	# External drivers 
+	LIFIB = LIF*Omega
+	CHIB = CH*Omega
+	PDIB = PD*Omega
+
+end parameters
+
+begin molecule types
+
+	# Nomenclature: Capital fonts for genes, normal fonts for TF's 
+	# Each gene has N binding sites where we chose to present N=2
+	# These binding sites are denoted by b
+	# On Proteins, the binding sites are denoted by s
+	# On each gene, there are an internal site nA, nR 
+	# counting the number of bound activators and repressors
+	
+	STAT3(nA~0~1~2,nR~0~1~2,b,b)
+	GBX2(nA~0~1~2,nR~0~1~2,b,b)
+	KLF4(nA~0~1~2,nR~0~1~2,b,b)
+	KLF2(nA~0~1~2,nR~0~1~2,b,b)
+	SALL4(nA~0~1~2,nR~0~1~2,b,b)
+	OCT4(nA~0~1~2,nR~0~1~2,b,b)
+	SOX2(nA~0~1~2,nR~0~1~2,b,b)
+	NANOG(nA~0~1~2,nR~0~1~2,b,b)
+	ESRRB(nA~0~1~2,nR~0~1~2,b,b)
+	TFCP2L1(nA~0~1~2,nR~0~1~2,b,b)
+	TCF3(nA~0~1~2,nR~0~1~2,b,b)
+	MEKERK(nA~0~1~2,nR~0~1~2,b,b)
+
+	stat3(s)
+	gbx2(s)
+	klf4(s)
+	klf2(s)
+	sall4(s)
+	oct4(s)
+	sox2(s)
+	nanog(s)
+	esrrb(s)
+	tfcp2l1(s)
+	tcf3(s)
+	mekerk(s)
+	
+	lif(s)
+	ch(s)
+	pd(s)
+	 
+end molecule types
+
+begin species
+	 
+	#  System begins with "naked" genes and 0 TF's 
+	STAT3(nA~0,nR~0,b,b) 1
+	GBX2(nA~0,nR~0,b,b) 1
+	KLF4(nA~0,nR~0,b,b) 1
+	KLF2(nA~0,nR~0,b,b) 1
+	SALL4(nA~0,nR~0,b,b) 1
+	OCT4(nA~0,nR~0,b,b) 1
+	SOX2(nA~0,nR~0,b,b) 1
+	NANOG(nA~0,nR~0,b,b) 1
+	ESRRB(nA~0,nR~0,b,b) 1
+	TFCP2L1(nA~0,nR~0,b,b) 1
+	TCF3(nA~0,nR~0,b,b) 1
+	MEKERK(nA~0,nR~0,b,b) 1
+	
+	stat3(s) 0
+	gbx2(s) 0
+	klf4(s) 0
+	klf2(s) 0
+	sall4(s) 0
+	oct4(s) 0
+	sox2(s) 0
+	nanog(s) 0
+	esrrb(s) 0
+	tfcp2l1(s) 0
+	tcf3(s) 0
+	mekerk(s) 0
+	
+	lif(s) 0
+	ch(s) 0
+	pd(s) 0
+
+end species
+
+begin reaction rules
+
+	# External driver dynamics
+	 
+	0<->lif(s) LIFIB,gamma
+	0<->ch(s) CHIB,gamma
+	0<->pd(s) PDIB,gamma
+	
+	# Binding/unbinding
+	 
+	lif(s)+STAT3(nA~0,b)<->lif(s!1).STAT3(nA~1,b!1) konIB,koffIB
+	lif(s)+STAT3(nA~1,b)<->lif(s!1).STAT3(nA~2,b!1) konIB,koffIB
+	
+	ch(s)+TCF3(nR~0,b)<->ch(s!1).TCF3(nR~1,b!1) konIB,koffIB
+	ch(s)+TCF3(nR~1,b)<->ch(s!1).TCF3(nR~2,b!1) konIB,koffIB
+	
+	pd(s)+MEKERK(nR~0,b)<->pd(s!1).MEKERK(nR~1,b!1) konIB,koffIB
+	pd(s)+MEKERK(nR~1,b)<->pd(s!1).MEKERK(nR~2,b!1) konIB,koffIB
+	
+	stat3(s)+GBX2(nA~0,b)<->stat3(s!1).GBX2(nA~1,b!1) konIB,koffIB
+	stat3(s)+GBX2(nA~1,b)<->stat3(s!1).GBX2(nA~2,b!1) konIB,koffIB
+	
+	stat3(s)+KLF4(nA~0,b)<->stat3(s!1).KLF4(nA~1,b!1) konIB,koffIB
+	stat3(s)+KLF4(nA~1,b)<->stat3(s!1).KLF4(nA~2,b!1) konIB,koffIB
+	
+	stat3(s)+TFCP2L1(nA~0,b)<->stat3(s!1).TFCP2L1(nA~1,b!1) konIB,koffIB
+	stat3(s)+TFCP2L1(nA~1,b)<->stat3(s!1).TFCP2L1(nA~2,b!1) konIB,koffIB
+
+	gbx2(s)+KLF4(nA~0,b)<->gbx2(s!1).KLF4(nA~1,b!1) konIB,koffIB
+	gbx2(s)+KLF4(nA~1,b)<->gbx2(s!1).KLF4(nA~2,b!1) konIB,koffIB		
+	
+	klf4(s)+KLF2(nA~0,b)<->klf4(s!1).KLF2(nA~1,b!1) konIB,koffIB
+	klf4(s)+KLF2(nA~1,b)<->klf4(s!1).KLF2(nA~2,b!1) konIB,koffIB	
+	
+	tfcp2l1(s)+SALL4(nA~0,b)<->tfcp2l1(s!1).SALL4(nA~1,b!1) konIB,koffIB
+	tfcp2l1(s)+SALL4(nA~1,b)<->tfcp2l1(s!1).SALL4(nA~2,b!1) konIB,koffIB	
+
+	sall4(s)+KLF2(nA~0,b)<->sall4(s!1).KLF2(nA~1,b!1) konIB,koffIB
+	sall4(s)+KLF2(nA~1,b)<->sall4(s!1).KLF2(nA~2,b!1) konIB,koffIB
+	
+	klf2(s)+OCT4(nA~0,b)<->klf2(s!1).OCT4(nA~1,b!1) konIB,koffIB
+	klf2(s)+OCT4(nA~1,b)<->klf2(s!1).OCT4(nA~2,b!1) konIB,koffIB	
+	
+	klf4(s)+TFCP2L1(nA~0,b)<->klf4(s!1).TFCP2L1(nA~1,b!1) konIB,koffIB
+	klf4(s)+TFCP2L1(nA~1,b)<->klf4(s!1).TFCP2L1(nA~2,b!1) konIB,koffIB	
+	
+	klf2(s)+NANOG(nA~0,b)<->klf2(s!1).NANOG(nA~1,b!1) konIB,koffIB
+	klf2(s)+NANOG(nA~1,b)<->klf2(s!1).NANOG(nA~2,b!1) konIB,koffIB	
+	
+	sall4(s)+SOX2(nA~0,b)<->sall4(s!1).SOX2(nA~1,b!1) konIB,koffIB
+	sall4(s)+SOX2(nA~1,b)<->sall4(s!1).SOX2(nA~2,b!1) konIB,koffIB
+	
+	sox2(s)+OCT4(nA~0,b)<->sox2(s!1).OCT4(nA~1,b!1) konIB,koffIB
+	sox2(s)+OCT4(nA~1,b)<->sox2(s!1).OCT4(nA~2,b!1) konIB,koffIB	
+			
+	oct4(s)+NANOG(nA~0,b)<->oct4(s!1).NANOG(nA~1,b!1) konIB,koffIB
+	oct4(s)+NANOG(nA~1,b)<->oct4(s!1).NANOG(nA~2,b!1) konIB,koffIB		
+	
+	nanog(s)+ESRRB(nA~0,b)<->nanog(s!1).ESRRB(nA~1,b!1) konIB,koffIB	
+	nanog(s)+ESRRB(nA~1,b)<->nanog(s!1).ESRRB(nA~2,b!1) konIB,koffIB	
+
+	nanog(s)+SOX2(nA~0,b)<->nanog(s!1).SOX2(nA~1,b!1) konIB,koffIB	
+	nanog(s)+SOX2(nA~1,b)<->nanog(s!1).SOX2(nA~2,b!1) konIB,koffIB	
+
+	esrrb(s)+TFCP2L1(nA~0,b)<->stat3(s!1).TFCP2L1(nA~1,b!1) konIB,koffIB
+	esrrb(s)+TFCP2L1(nA~1,b)<->stat3(s!1).TFCP2L1(nA~2,b!1) konIB,koffIB
+
+	tfcp2l1(s)+ESRRB(nA~0,b)<->tfcp2l1(s!1).ESRRB(nA~1,b!1) konIB,koffIB
+	tfcp2l1(s)+ESRRB(nA~1,b)<->tfcp2l1(s!1).ESRRB(nA~2,b!1) konIB,koffIB	
+					
+	mekerk(s)+TCF3(nR~0,b)<->mekerk(s!1).TCF3(nR~1,b!1) konIB,koffIB
+	mekerk(s)+TCF3(nR~1,b)<->mekerk(s!1).TCF3(nR~2,b!1) konIB,koffIB
+
+	mekerk(s)+NANOG(nR~0,b)<->mekerk(s!1).NANOG(nR~1,b!1) konIB,koffIB
+	mekerk(s)+NANOG(nR~1,b)<->mekerk(s!1).NANOG(nR~2,b!1) konIB,koffIB
+
+	tcf3(s)+TFCP2L1(nR~0,b)<->tcf3(s!1).TFCP2L1(nR~1,b!1) konIB,koffIB
+	tcf3(s)+TFCP2L1(nR~1,b)<->tcf3(s!1).TFCP2L1(nR~2,b!1) konIB,koffIB
+
+	tcf3(s)+ESRRB(nR~0,b)<->tcf3(s!1).ESRRB(nR~1,b!1) konIB,koffIB
+	tcf3(s)+ESRRB(nR~1,b)<->tcf3(s!1).ESRRB(nR~2,b!1) konIB,koffIB
+	
+	esrrb(s)+OCT4(nR~0,b)<->esrrb(s!1).OCT4(nR~1,b!1) konIB,koffIB
+	esrrb(s)+OCT4(nR~1,b)<->esrrb(s!1).OCT4(nR~2,b!1) konIB,koffIB
+
+	oct4(s)+TFCP2L1(nR~0,b)<->oct4(s!1).TFCP2L1(nR~1,b!1) konIB,koffIB
+	oct4(s)+TFCP2L1(nR~1,b)<->oct4(s!1).TFCP2L1(nR~2,b!1) konIB,koffIB
+						
+	# TF production and degradation
+	
+	# those only regulated by activators
+	STAT3(nA~2)->STAT3(nA~2)+stat3(s) alphamaxIB
+	STAT3(nA~1)->STAT3(nA~1)+stat3(s) 0.0
+	STAT3(nA~0)->STAT3(nA~0)+stat3(s) 0.0
+
+	GBX2(nA~2)->GBX2(nA~2)+gbx2(s) alphamaxIB
+	GBX2(nA~1)->GBX2(nA~1)+gbx2(s) 0.0
+	GBX2(nA~0)->GBX2(nA~0)+gbx2(s) 0.0
+
+	KLF4(nA~2)->KLF4(nA~2)+klf4(s) alphamaxIB
+	KLF4(nA~1)->KLF4(nA~1)+klf4(s) 0.0
+	KLF4(nA~0)->KLF4(nA~0)+klf4(s) 0.0
+
+	KLF2(nA~2)->KLF2(nA~2)+klf2(s) alphamaxIB
+	KLF2(nA~1)->KLF2(nA~1)+klf2(s) 0.0
+	KLF2(nA~0)->KLF2(nA~0)+klf2(s) 0.0
+
+	SALL4(nA~2)->SALL4(nA~2)+sall4(s) alphamaxIB
+	SALL4(nA~1)->SALL4(nA~1)+sall4(s) 0.0
+	SALL4(nA~0)->SALL4(nA~0)+sall4(s) 0.0
+
+	SOX2(nA~2)->SOX2(nA~2)+sox2(s) alphamaxIB
+	SOX2(nA~1)->SOX2(nA~1)+sox2(s) 0.0
+	SOX2(nA~0)->SOX2(nA~0)+sox2(s) 0.0	
+	
+	# those only regulated by repressors
+	TCF3(nR~2)->TCF3(nR~2)+tcf3(s) 0.0
+	TCF3(nR~1)->TCF3(nR~1)+tcf3(s) alphamaxIB
+	TCF3(nR~0)->TCF3(nR~0)+tcf3(s) alphamaxIB
+
+	MEKERK(nR~2)->MEKERK(nR~2)+mekerk(s) 0.0
+	MEKERK(nR~1)->MEKERK(nR~1)+mekerk(s) alphamaxIB
+	MEKERK(nR~0)->MEKERK(nR~0)+mekerk(s) alphamaxIB		
+	
+	
+	 
+	# those regulated by toth activators or repressors
+	OCT4(nA~2)->OCT4(nA~2)+oct4(s) alphamaxIB
+	OCT4(nR~2)->OCT4(nR~2)+oct4(s) 0.0
+	OCT4(nA~0,nR~0)->OCT4(nA~0,nR~0)+oct4(s) alphamIB
+	OCT4(nA~1,nR~0)->OCT4(nA~1,nR~0)+oct4(s) alphamIB
+	OCT4(nA~0,nR~1)->OCT4(nA~0,nR~1)+oct4(s) alphamIB
+	OCT4(nA~1,nR~1)->OCT4(nA~1,nR~1)+oct4(s) alphamIB
+	
+	TFCP2L1(nA~2)->TFCP2L1(nA~2)+tfcp2l1(s) alphamaxIB
+	TFCP2L1(nR~2)->TFCP2L1(nR~2)+tfcp2l1(s) 0.0
+	TFCP2L1(nA~0,nR~0)->TFCP2L1(nA~0,nR~0)+tfcp2l1(s) alphamIB
+	TFCP2L1(nA~1,nR~0)->TFCP2L1(nA~1,nR~0)+tfcp2l1(s) alphamIB
+	TFCP2L1(nA~0,nR~1)->TFCP2L1(nA~0,nR~1)+tfcp2l1(s) alphamIB
+	TFCP2L1(nA~1,nR~1)->TFCP2L1(nA~1,nR~1)+tfcp2l1(s) alphamIB
+
+	ESRRB(nA~2)->ESRRB(nA~2)+esrrb(s) alphamaxIB
+	ESRRB(nR~2)->ESRRB(nR~2)+esrrb(s) 0.0
+	ESRRB(nA~0,nR~0)->ESRRB(nA~0,nR~0)+esrrb(s) alphamIB
+	ESRRB(nA~1,nR~0)->ESRRB(nA~1,nR~0)+esrrb(s) alphamIB
+	ESRRB(nA~0,nR~1)->ESRRB(nA~0,nR~1)+esrrb(s) alphamIB
+	ESRRB(nA~1,nR~1)->ESRRB(nA~1,nR~1)+esrrb(s) alphamIB	
+	
+	NANOG(nA~2)->NANOG(nA~2)+nanog(s) alphamaxIB
+	NANOG(nR~2)->NANOG(nR~2)+nanog(s) 0.0
+	NANOG(nA~0,nR~0)->NANOG(nA~0,nR~0)+nanog(s) alphamIB
+	NANOG(nA~1,nR~0)->NANOG(nA~1,nR~0)+nanog(s) alphamIB
+	NANOG(nA~0,nR~1)->NANOG(nA~0,nR~1)+nanog(s) alphamIB
+	NANOG(nA~1,nR~1)->NANOG(nA~1,nR~1)+nanog(s) alphamIB		
+	
+	stat3(s)->0 gamma
+	gbx2(s)->0 gamma
+	klf4(s)->0 gamma
+	klf2(s)->0 gamma
+	sall4(s)->0 gamma
+	oct4(s)->0 gamma
+	sox2(s)->0 gamma
+	nanog(s)->0 gamma
+	esrrb(s)->0 gamma
+	tfcp2l1(s)->0 gamma
+	tcf3(s)->0 gamma
+	mekerk(s)->0 gamma
+	
+	
+end reaction rules
+
+begin observables
+
+	Species lif lif(s)
+	Species ch ch(s)
+	Species pd pd(s)
+	Species stat3 stat3(s)
+	Species gbx2 gbx2(s)
+	Species klf4 klf4(s)
+	Species klf2 klf2(s)
+	Species sall4 sall4(s)
+	Species oct4 oct4(s)
+	Species sox2 sox2(s)
+	Species nanog nanog(s)
+	Species esrrb esrrb(s)
+	Species tfcp2l1 tfcp2l1(s)
+	Species tcf3 tcf3(s)
+	Species mekerk mekerk(s)
+	
+end observables

@@ -43,6 +43,7 @@ class BNGL_TO_WE:
         f = open("run.sh", "w")
         f.writelines(lines)
         f.close()
+        os.chmod("run.sh", 0764)
 
     def _write_envsh(self):
         WESTPA_path = self.opts.get("WESTPA_path", None)
@@ -60,6 +61,7 @@ class BNGL_TO_WE:
         f = open("env.sh", "w")
         f.writelines(lines)
         f.close()
+        os.chmod("env.sh", 0764)
 
     def _write_auxfuncs(self):
         lines = [
@@ -103,6 +105,7 @@ class BNGL_TO_WE:
         f = open("westpa_scripts/get_pcoord.sh", "w")
         f.writelines(lines)
         f.close()
+        os.chmod("westpa_scripts/get_pcoord.sh", 0764)
 
     def _write_postiter(self):
         lines = [
@@ -122,6 +125,7 @@ class BNGL_TO_WE:
         f = open("westpa_scripts/post_iter.sh", "w")
         f.writelines(lines)
         f.close()
+        os.chmod("westpa_scripts/post_iter.sh", 0764)
 
     def _write_initsh(self):
         self.traj_per_bin = self.opts.get("traj_per_bin", 10)
@@ -133,13 +137,13 @@ class BNGL_TO_WE:
             'mkdir   seg_logs traj_segs \n',
             'cp $WEST_SIM_ROOT/bngl_conf/init.net bstates/0.net\n',
             'BSTATE_ARGS="--bstate-file bstates/bstates.txt"\n',
-            '$WEST_ROOT/bin/w_init \\n', '  $BSTATE_ARGS \\n', '  --segs-per-state {} \\n'.format(self.traj_per_bin),
-            '  --work-manager=threads "$@"\n'
+            '$WEST_ROOT/bin/w_init $BSTATE_ARGS --segs-per-state {} --work-manager=threads "$@"'.format(self.traj_per_bin),
             ]
 
         f = open("init.sh", "w")
         f.writelines(lines)
         f.close()
+        os.chmod("init.sh", 0764)
 
     def _write_systempy(self):
         self.dims = self.opts.get("dimensions", None)
@@ -305,6 +309,7 @@ class BNGL_TO_WE:
         f = open("westpa_scripts/runseg.sh", "w")
         f.writelines(lines)
         f.close()
+        os.chmod("westpa_scripts/runseg.sh", 0764)
 
     def write_dynamic_files(self):
         self._write_initsh()

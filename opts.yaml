@@ -5,7 +5,7 @@ bngl_file: "/home/monoid/PROJECTS/bngl-to-westpa/sample.bngl"
 bng_path: "/home/monoid/apps/BioNetGen-2.3.2/"
 WESTPA_path: "/home/monoid/apps/westpa/"
 traj_per_bin: 10
-dimensions: 10
+dimensions: 15
 pcoord_length: 2
 max_iter: 100
 block_size: 10

@@ -13,6 +13,7 @@ class BNGL_TO_WE:
         self._parse_args()
         self.opts = self._load_yaml(self.args.opts)
         self._parse_opts(self.opts)
+        self.copy_run_net = self.args.copy_run_net
 
     def _getd(self, dic, key, default=None, required=True):
         val = dic.get(key, default)
@@ -62,6 +63,11 @@ class BNGL_TO_WE:
                             help='Options YAML file, required',
                             type=str)
 
+        parser.add_argument('--copy-run-network',
+                            dest='copy_run_net',
+                            action='store_true',
+                            help='If set, copies over the run_network binary')
+
         self.args = parser.parse_args()
 
     def _load_yaml(self, yfile):
@@ -78,6 +84,8 @@ class BNGL_TO_WE:
         '''
         write the run.sh file for WESTPA simulations
         '''
+        # TODO: Add submission scripts for varied clusters
+        # TODO: Add a hook to write any submission scripts?
         lines = [
           '#!/bin/bash\n',
           'source env.sh\n',
@@ -100,9 +108,13 @@ class BNGL_TO_WE:
             '#!/bin/sh\n',
             'source {}/westpa.sh\n'.format(self.WESTPA_path),
             'export WEST_SIM_ROOT="$PWD"\n',
-            'export RunNet="$WEST_SIM_ROOT/bngl_conf/run_network"\n',
             'export SIM_NAME=$(basename $WEST_SIM_ROOT)\n'
             ]
+
+        if self.copy_run_net:
+            lines.append('export RunNet="$WEST_SIM_ROOT/bngl_conf/run_network"\n')
+        else:
+            lines.append('export RunNet="{}/bin/run_network"\n'.format(self.bng_path))
 
         f = open("env.sh", "w")
         f.writelines(lines)
@@ -465,7 +477,8 @@ class BNGL_TO_WE:
         make the WESTPA simultion folder
         '''
         self.make_sim_folders()
-        self.copy_run_network()
+        if self.copy_run_net: 
+            self.copy_run_network()
         self.write_static_files()
         self.run_BNGL_on_file()
         self.write_dynamic_files()

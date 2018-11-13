@@ -434,11 +434,9 @@ class BNGL_TO_WE:
         # This assumes that the bngl file doesn't have any directives at the end! 
         # we have a bngl file
         os.chdir("bngl_conf")
-        # Get into a folder specifically for this purpose
-        os.mkdir("BNGL")
-        os.chdir("BNGL")
         # Make specific BNGL files for a) generating network and then 
         # b) getting a starting  gdat file
+        shutil.copyfile(self.bngl_file, "init.bngl")
         shutil.copyfile(self.bngl_file, "for_network.bngl")
         f = open("for_network.bngl", "a")
         # Adding directives to generate the files we want
@@ -455,7 +453,9 @@ class BNGL_TO_WE:
         proc.wait()
         assert proc.returncode == 0, "call to BNG2.pl failed, make sure it's in your PATH"
         # copy our network back
-        shutil.copyfile("for_network.net", "../init.net")
+        shutil.copyfile("for_network.net", "init.net")
+        os.remove("for_network.bngl")
+        os.remove("for_network.net")
         # run on gdat 
         proc = sbpc.Popen([self.bngpl, "for_gdat.bngl"])
         proc.wait()
@@ -465,9 +465,13 @@ class BNGL_TO_WE:
         l = f.readlines()
         f.close()
         # Now write the first two lines to init.gdat
-        f = open("../init.gdat", "w")
+        f = open("init.gdat", "w")
         f.writelines(l[:2])
         f.close()
+        os.remove("for_gdat.bngl")
+        os.remove("for_gdat.net")
+        os.remove("for_gdat.cdat")
+        os.remove("for_gdat.gdat")
         # return to main simulation folder
         os.chdir(os.path.join(self.main_dir, self.sim_dir))
 

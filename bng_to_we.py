@@ -14,6 +14,12 @@ class BNGL_TO_WE:
         self.opts = self._load_yaml(self.args.opts)
         self._parse_opts(self.opts)
 
+    def _getd(self, dic, key, default=None, required=True):
+        val = dic.get(key, default)
+        if required and (val is None):
+            sys.exit("{} is not specified in the dictionary")
+        return val
+
     def _parse_opts(self, opts_dict):
         '''
         Parses the loaded YAML dictionary and updates the 
@@ -22,44 +28,26 @@ class BNGL_TO_WE:
         # Set the main directory we are in 
         self.main_dir = os.getcwd()
         # we need to find WESTPA and BNG
-        path_options = self.opts.get("path_options", None)
-        if path_options is None:
-            sys.exit("Path options are not specified in options file")
-        self.WESTPA_path = path_options.get("WESTPA_path", None)
-        self.bng_path = path_options.get("bng_path", None)
-        self.bngl_file = path_options.get("bngl_file", None)
-        self.fname = path_options.get("sim_name", "WE_BNG_sim")
-        if self.WESTPA_path is None:
-            sys.exit("WESTPA path is not specified in options file")
-        if self.bng_path is None: 
-            sys.exit("bng_path is not specified in the options file")
-        if self.bngl_file is None:
-            sys.exit("bngl_file path is not specified in the options file")
+        path_options = self._getd(self.opts, "path_options")
+        self.WESTPA_path = self._getd(path_options, "WESTPA_path")
+        self.bng_path = self._getd(path_options, "bng_path")
+        self.bngl_file = self._getd(path_options, "bngl_file")
+        self.fname = self._getd(path_options, "sim_name", default="WE_BNG_sim")
         # Define where the BNG2.pl script is 
         self.bngpl = os.path.join(self.bng_path, "BNG2.pl")
         # Sampling options 
-        sampling_options = self.opts.get("sampling_options", None)
-        if sampling_options is None:
-            sys.exit("Sampling options are not specified in options file")
-        self.tau = sampling_options.get("tau", None)
-        self.max_iter = sampling_options.get("max_iter", 100)
-        self.dims = sampling_options.get("dimensions", None)
-        self.plen= sampling_options.get("pcoord_length", None)
-        if self.tau is None: 
-            sys.exit("tau is not specified in the options file")
-        if self.dims is None:
-            sys.exit("dimensions is not specified in options file")
-        if self.plen is None:
-            sys.exit("pcoord_length is not specified in options file")
+        sampling_options = self._getd(self.opts, "sampling_options")
+        self.tau = self._getd(sampling_options, "tau")
+        self.max_iter = self._getd(sampling_options, "max_iter", default=100)
+        self.dims = self._getd(sampling_options, "dimensions")
+        self.plen= self._getd(sampling_options, "pcoord_length")
         # binning options
-        binning_options = self.opts.get("binning_options", None)
-        if binning_options is None:
-            sys.exit("Binning options are not specified in options file")
+        binning_options = self._getd(self.opts, "binning_options")
         # At the moment I'm assuming a safe set of defaults?
-        self.traj_per_bin = binning_options.get("traj_per_bin", 10)
-        self.block_size = binning_options.get("block_size", 10)
-        self.center_freq = binning_options.get("center_freq", 1)
-        self.max_centers = binning_options.get("max_centers", 300)
+        self.traj_per_bin = self._getd(binning_options, "traj_per_bin", default=10)
+        self.block_size = self._getd(binning_options, "block_size", default=10)
+        self.center_freq = self._getd(binning_options, "center_freq", default=1)
+        self.max_centers = self._getd(binning_options, "max_centers", default=300)
 
     def _parse_args(self):
         '''

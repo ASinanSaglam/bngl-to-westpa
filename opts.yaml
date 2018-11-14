@@ -7,7 +7,7 @@ path_options:
   WESTPA_path: "/home/monoid/apps/westpa/"
 sampling_options:
   tau: 20
-  dimensions: 15
+  dimensions: 12
   pcoord_length: 2
   max_iter: 100
 binning_options: 
